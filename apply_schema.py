@@ -1,13 +1,13 @@
-import psycopg2
 import os
+import psycopg2
 
 print("Connecting to the database...")
 conn = psycopg2.connect(
-    host="hustaq-db.cj6cicg0wqlt.eu-west-1.rds.amazonaws.com",
-    database="hustaq",
-    user="hustaq",
-    password="hustaq_prod_123_changeme",
-    port=5432
+    host=os.environ.get("DB_HOST", "hustaq-db.cj6cicg0wqlt.eu-west-1.rds.amazonaws.com"),
+    database=os.environ.get("DB_NAME", "hustaq"),
+    user=os.environ.get("DB_USER", "hustaq"),
+    password=os.environ.get("DB_PASSWORD", "hustaq_local"),
+    port=int(os.environ.get("DB_PORT", 5432))
 )
 conn.autocommit = True
 cur = conn.cursor()

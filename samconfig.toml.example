@@ -1,0 +1,15 @@
+version = 0.1
+[default.global.parameters]
+stack_name = "hustaq-api"
+
+[default.build.parameters]
+use_container = false          # builds psycopg2 for Lambda Linux inside Docker
+
+[default.deploy.parameters]
+stack_name         = "hustaq-api"
+s3_prefix          = "hustaq"
+region             = "eu-west-1"
+capabilities       = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+resolve_s3         = true
+confirm_changeset  = true
+parameter_overrides = "TwilioAccountSid=\"YOUR_TWILIO_ACCOUNT_SID\" TwilioWhatsappNumber=\"YOUR_TWILIO_WHATSAPP_NUMBER\" TwilioAuthToken=\"YOUR_TWILIO_AUTH_TOKEN\" DBPassword=\"YOUR_DB_PASSWORD\""
