@@ -6,8 +6,9 @@ conn = psycopg2.connect(
     host=os.environ.get("DB_HOST", "hustaq-db.cj6cicg0wqlt.eu-west-1.rds.amazonaws.com"),
     database=os.environ.get("DB_NAME", "hustaq"),
     user=os.environ.get("DB_USER", "hustaq"),
-    password=os.environ.get("DB_PASSWORD", "hustaq_local"),
-    port=int(os.environ.get("DB_PORT", 5432))
+    password=os.environ.get("DB_PASS", "hustaq_local"),
+    port=int(os.environ.get("DB_PORT", 5432)),
+    sslmode="require"
 )
 conn.autocommit = True
 cur = conn.cursor()
