@@ -1,0 +1,343 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Hustaq - WhatsApp commerce platform for Nigerian informal sellers
+
+# ---------------------------------------------------------------------------
+# Parameters — filled in during: sam deploy --guided
+# ---------------------------------------------------------------------------
+Parameters:
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Password for RDS PostgreSQL (min 8 chars)
+
+  TwilioAccountSid:
+    Type: String
+    Description: Twilio Account SID (starts with AC...)
+
+  TwilioWhatsappNumber:
+    Type: String
+    Description: "Your Twilio sender — format: whatsapp:+234..."
+
+  TwilioAuthToken:
+    Type: String
+    NoEcho: true
+    Description: Twilio Auth Token (stored in Secrets Manager)
+
+  NombaClientId:
+    Type: String
+    Default: ''
+    Description: Nomba sandbox client_id (leave blank for Phase 1)
+
+  NombaClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Nomba sandbox client_secret (leave blank for Phase 1)
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+    MemorySize: 512
+    Timeout: 29
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # ── Private Subnets (Lambda + ElastiCache live here) ────────────────────
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: vpc-0b132a94c81b10dec
+      CidrBlock: 172.31.48.0/24
+      AvailabilityZone: eu-west-1a
+      Tags:
+        - Key: Name
+          Value: hustaq-private-1a
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: vpc-0b132a94c81b10dec
+      CidrBlock: 172.31.49.0/24
+      AvailabilityZone: eu-west-1b
+      Tags:
+        - Key: Name
+          Value: hustaq-private-1b
+
+  # ── NAT Gateway (Lambda's route to Twilio + Nomba) ──────────────────────
+
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: subnet-09da52b928829e83d   # eu-west-1a public subnet
+      Tags:
+        - Key: Name
+          Value: hustaq-nat
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: vpc-0b132a94c81b10dec
+      Tags:
+        - Key: Name
+          Value: hustaq-private-rt
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ── Security Groups ──────────────────────────────────────────────────────
+
+  LambdaSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Hustaq Lambda - outbound only
+      VpcId: vpc-0b132a94c81b10dec
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: hustaq-lambda-sg
+
+  RDSSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Hustaq RDS - Lambda + your laptop
+      VpcId: vpc-0b132a94c81b10dec
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSG
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 102.89.82.177/32     # your public IP — run schema.sql from laptop
+      Tags:
+        - Key: Name
+          Value: hustaq-rds-sg
+
+  RedisSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Hustaq Redis - Lambda only
+      VpcId: vpc-0b132a94c81b10dec
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref LambdaSG
+      Tags:
+        - Key: Name
+          Value: hustaq-redis-sg
+
+  # ── RDS PostgreSQL ───────────────────────────────────────────────────────
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Hustaq RDS subnets
+      SubnetIds:
+        - subnet-09da52b928829e83d   # eu-west-1a
+        - subnet-0d6a6691385089741   # eu-west-1b
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: hustaq-db
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      EngineVersion: '16'
+      DBName: hustaq
+      MasterUsername: hustaq
+      MasterUserPassword: !Ref DBPassword
+      AllocatedStorage: '20'
+      StorageType: gp2
+      PubliclyAccessible: true        # allows running schema.sql from laptop
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSG
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+
+  # ── ElastiCache Redis ────────────────────────────────────────────────────
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Hustaq Redis subnets
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: hustaq-redis
+      CacheNodeType: cache.t3.micro
+      Engine: redis
+      NumCacheNodes: 1
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSG
+
+  # ── S3 ───────────────────────────────────────────────────────────────────
+
+  ProductsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'hustaq-products-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET]
+            AllowedOrigins: ['*']
+            AllowedHeaders: ['*']
+
+  ProductsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ProductsBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${ProductsBucket.Arn}/*'
+
+  # ── Secrets Manager ──────────────────────────────────────────────────────
+
+  TwilioSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: hustaq/twilio/auth_token
+      SecretString: !Ref TwilioAuthToken
+
+  NombaSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: hustaq/nomba/credentials
+      SecretString: !Sub '{"client_id":"${NombaClientId}","client_secret":"${NombaClientSecret}"}'
+
+  # ── IAM Role ─────────────────────────────────────────────────────────────
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: hustaq-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: hustaq-lambda-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject, s3:PutObjectAcl]
+                Resource: !Sub '${ProductsBucket.Arn}/*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref TwilioSecret
+                  - !Ref NombaSecret
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: '*'
+
+  # ── Lambda Function ──────────────────────────────────────────────────────
+
+  HustaqFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hustaq-api
+      CodeUri: .
+      Handler: main.handler
+      Role: !GetAtt LambdaRole.Arn
+      FunctionUrlConfig:
+        AuthType: NONE
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSG
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Environment:
+        Variables:
+          TWILIO_ACCOUNT_SID: !Ref TwilioAccountSid
+          TWILIO_WHATSAPP_NUMBER: !Ref TwilioWhatsappNumber
+          DB_HOST: !GetAtt RDSInstance.Endpoint.Address
+          DB_PORT: '5432'
+          DB_NAME: hustaq
+          DB_USER: hustaq
+          DB_PASS: !Ref DBPassword
+          REDIS_HOST: !GetAtt RedisCluster.RedisEndpoint.Address
+          REDIS_PORT: '6379'
+          S3_BUCKET: !Ref ProductsBucket
+          NOMBA_ENV: sandbox
+          SKIP_TWILIO_VERIFY: 'false'
+          LAMBDA_URL: ''        # updated after first deploy via: sam deploy (no --guided)
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  FunctionUrl:
+    Description: "Paste this into Twilio Console as your webhook URL + /webhooks/twilio"
+    Value: !GetAtt HustaqFunctionUrl.FunctionUrl
+
+  RDSEndpoint:
+    Description: "Run schema.sql against this: psql -h <endpoint> -U hustaq -d hustaq"
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  RedisEndpoint:
+    Description: ElastiCache Redis primary endpoint
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+
+  S3Bucket:
+    Description: Product photos bucket
+    Value: !Ref ProductsBucket

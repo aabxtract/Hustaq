@@ -1,0 +1,11 @@
+.env
+.env.local
+.env.example
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+docker-compose.yml
+samconfig.toml
+docs/
