@@ -1,82 +1,52 @@
-import os
 from fastapi import APIRouter, Request, Response
-from src.lib.secrets import get_secret
-from src.lib.redis_client import get_redis
-from src.db import queries as db
-from src.bot.scripts import SCRIPTS
-from src.services.twilio_svc import send_message, verify_twilio_signature
+from src.lib.config import settings
+from src.db.queries import get_seller_by_twilio_number
 from src.services.state import process_message
-from src.services.seller_commands import handle_seller_command
+from src.services.twilio import send_message, verify_twilio_signature
+from src.bot.scripts import SCRIPTS
 
 router = APIRouter()
 
-
-@router.post('/twilio')
+@router.post("/twilio")
 async def twilio_webhook(request: Request):
+    # 1. Parse form-encoded body (Twilio sends application/x-www-form-urlencoded)
     form = await request.form()
     params = dict(form)
 
-    # Verify Twilio signature (skip locally via env var)
-    if os.environ.get('SKIP_TWILIO_VERIFY', '').lower() != 'true':
-        auth_token = get_secret('hustaq/twilio/auth_token')
-        signature = request.headers.get('X-Twilio-Signature', '')
-        url = str(request.url)
-        if not verify_twilio_signature(auth_token, signature, url, params):
-            return Response(status_code=403)
+    # 2. Verify Twilio signature
+    signature = request.headers.get("X-Twilio-Signature", "")
+    url = str(request.url)
+    if not verify_twilio_signature(settings.TWILIO_AUTH_TOKEN, signature, url, params):
+        return Response(status_code=403)
 
-    from_phone = params.get('From', '').replace('whatsapp:', '')
-    to_phone = params.get('To', '').replace('whatsapp:', '')
-    text = params.get('Body', '').strip()
-    media_url = params.get('MediaUrl0')
-    num_media = int(params.get('NumMedia', '0'))
+    # 3. Extract fields
+    from_phone = params["From"].replace("whatsapp:", "")
+    to_phone = params["To"].replace("whatsapp:", "")
+    text = params.get("Body", "")
+    media_url = params.get("MediaUrl0")
 
-    hustaq_number = os.environ.get('TWILIO_WHATSAPP_NUMBER', '').replace('whatsapp:', '')
+    # 4. Echo detection — seller chatting manually from their own phone
+    seller = await get_seller_by_twilio_number(f"whatsapp:{to_phone}")
+    if seller and from_phone == seller["phone_number"]:
+        from src.handlers.twilio import handle_echo
+        await handle_echo(seller, from_phone)
+        return Response(content="", status_code=200)
 
-    # Check if sender is a known seller or mid-onboarding
-    from_is_seller = db.get_seller_by_phone(from_phone) is not None
-    from src.lib.redis_client import get_redis as _get_redis
-    _r = _get_redis()
-    from_is_onboarding = _r.get(f'onboard:{from_phone}') is not None
+    # 5. Route seller bot commands (message TO Hustaq central number)
+    hustaq_number = settings.TWILIO_WHATSAPP_NUMBER.replace("whatsapp:", "")
+    if to_phone == hustaq_number:
+        from src.services.seller_commands import handle_seller_command
+        await handle_seller_command(from_phone, text, media_url)
+        return Response(content="", status_code=200)
 
-    # Single-number routing:
-    # - Known sellers (or onboarding) texting Hustaq number → seller commands
-    # - Everyone else texting Hustaq number → buyer state machine
-    if to_phone == hustaq_number and (from_is_seller or from_is_onboarding):
-        resolved_media = None
-        if num_media > 0 and media_url:
-            seller = db.get_seller_by_phone(from_phone)
-            if seller:
-                from src.services.twilio_svc import save_media_to_s3
-                resolved_media = await save_media_to_s3(media_url, str(seller['id']))
-            else:
-                resolved_media = media_url
-        await handle_seller_command(from_phone, text, resolved_media, send_message)
-        return Response(content='', status_code=200)
-
-    # New unknown number texting Hustaq number for first time → start seller onboarding
-    # (handles "I want to sell" style messages)
-    if to_phone == hustaq_number and not from_is_seller and not from_is_onboarding:
-        # Check if message looks like seller intent keywords
-        seller_keywords = ('sell', 'shop', 'vendor', 'register', 'onboard', 'join', 'start')
-        if any(k in text.lower() for k in seller_keywords):
-            await handle_seller_command(from_phone, text, None, send_message)
-            return Response(content='', status_code=200)
-
-    # Echo detection: seller texting from personal phone to buyer's conversation number
-    seller = db.get_seller_by_twilio_number(f'whatsapp:{to_phone}')
-    if seller and from_phone == seller['phone_number']:
-        await _handle_echo(seller, from_phone)
-        return Response(content='', status_code=200)
-
-    # Buyer message → state machine
-    await process_message(from_phone, to_phone, text, media_url, send_message)
-    return Response(content='', status_code=200)
+    # 6. Normal buyer message — run through state machine
+    await process_message(from_phone, to_phone, text, media_url)
+    return Response(content="", status_code=200)
 
 
-async def _handle_echo(seller: dict, seller_phone: str):
-    r = get_redis()
-    db.update_conv_handoff(str(seller['id']), True)
-    alerted_key = f'echo:alerted:{seller["id"]}'
-    if not r.get(alerted_key):
-        await send_message(seller_phone, SCRIPTS['seller']['echo_pause']('your buyer'))
-        r.setex(alerted_key, 1800, '1')
+async def handle_echo(seller: dict, seller_phone: str):
+    from src.db.queries import update_conversation, get_conversation
+    conv = await get_conversation(seller["_id"], seller_phone)
+    if conv:
+        await update_conversation(conv["_id"], {"handoff_active": True})
+    await send_message(seller_phone, SCRIPTS["seller"]["echo_pause"]("your buyer"))
