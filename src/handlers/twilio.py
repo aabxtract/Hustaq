@@ -32,11 +32,18 @@ async def twilio_webhook(request: Request):
 
     hustaq_number = os.environ.get('TWILIO_WHATSAPP_NUMBER', '').replace('whatsapp:', '')
 
-    # Seller texting the central Hustaq number → seller commands / onboarding
-    if to_phone == hustaq_number:
+    # Check if sender is a known seller or mid-onboarding
+    from_is_seller = db.get_seller_by_phone(from_phone) is not None
+    from src.lib.redis_client import get_redis as _get_redis
+    _r = _get_redis()
+    from_is_onboarding = _r.get(f'onboard:{from_phone}') is not None
+
+    # Single-number routing:
+    # - Known sellers (or onboarding) texting Hustaq number → seller commands
+    # - Everyone else texting Hustaq number → buyer state machine
+    if to_phone == hustaq_number and (from_is_seller or from_is_onboarding):
         resolved_media = None
         if num_media > 0 and media_url:
-            # Save media to S3 (or return as-is locally)
             seller = db.get_seller_by_phone(from_phone)
             if seller:
                 from src.services.twilio_svc import save_media_to_s3
@@ -46,8 +53,16 @@ async def twilio_webhook(request: Request):
         await handle_seller_command(from_phone, text, resolved_media, send_message)
         return Response(content='', status_code=200)
 
-    # Echo detection: seller is texting from their own personal phone
-    # to a buyer conversation (seller's private WA → same twilio number)
+    # New unknown number texting Hustaq number for first time → start seller onboarding
+    # (handles "I want to sell" style messages)
+    if to_phone == hustaq_number and not from_is_seller and not from_is_onboarding:
+        # Check if message looks like seller intent keywords
+        seller_keywords = ('sell', 'shop', 'vendor', 'register', 'onboard', 'join', 'start')
+        if any(k in text.lower() for k in seller_keywords):
+            await handle_seller_command(from_phone, text, None, send_message)
+            return Response(content='', status_code=200)
+
+    # Echo detection: seller texting from personal phone to buyer's conversation number
     seller = db.get_seller_by_twilio_number(f'whatsapp:{to_phone}')
     if seller and from_phone == seller['phone_number']:
         await _handle_echo(seller, from_phone)

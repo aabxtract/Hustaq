@@ -38,10 +38,10 @@ Make sure you have your phone ready and your terminal open.
 
 ## Step 3: Payment Webhook Simulation (The "Aha!" Moment)
 **Action**: In your terminal, run the following `curl` command to simulate Nomba sending a successful payment webhook.
-*(Ensure you replace `<YOUR_LAMBDA_URL>` and `<ORDER_ID_FROM_DATABASE>` beforehand, or just point out how this works!)*
+*(Ensure you replace `<YOUR_VERCEL_URL>` and `<ORDER_ID_FROM_DATABASE>` beforehand, or just point out how this works!)*
 
 ```bash
-curl -X POST <YOUR_LAMBDA_URL>/webhooks/nomba \
+curl -X POST https://<YOUR_VERCEL_URL>/api/webhooks/nomba \
   -H 'Content-Type: application/json' \
   -d '{
     "event": "payment.success",

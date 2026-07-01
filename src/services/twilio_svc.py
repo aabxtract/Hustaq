@@ -17,6 +17,11 @@ def get_client() -> Client:
 
 
 async def send_message(to: str, body: str) -> None:
+    # Set SKIP_TWILIO_SEND=true locally to log messages without real API calls
+    if os.environ.get('SKIP_TWILIO_SEND', '').lower() == 'true':
+        safe_body = body[:120].encode('ascii', errors='replace').decode('ascii')
+        print(f'[MOCK SEND -> {to}]: {safe_body}')
+        return
     client = get_client()
     from_number = os.environ['TWILIO_WHATSAPP_NUMBER']
     to_formatted = to if to.startswith('whatsapp:') else f'whatsapp:{to}'
