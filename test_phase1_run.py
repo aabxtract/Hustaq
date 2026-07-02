@@ -42,7 +42,7 @@ def send_meta(from_phone, to_phone, body):
     }
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        f"{BASE_URL}/api/webhooks/twilio",
+        f"{BASE_URL}/api/webhooks/whatsapp",
         data=data, headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -87,7 +87,7 @@ def main():
 
     # 0.5 Meta webhook verification
     print(f"{INFO} Step 0.5: Meta webhook verification (GET)")
-    url = (f"{BASE_URL}/api/webhooks/twilio"
+    url = (f"{BASE_URL}/api/webhooks/whatsapp"
            f"?hub.mode=subscribe&hub.verify_token=hustaq_123"
            f"&hub.challenge=1234567890")
     try:

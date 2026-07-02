@@ -4,7 +4,7 @@ from src.db.queries import (
     get_order_by_id, update_order,
     update_seller, get_seller_by_phone,
 )
-from src.services.twilio import send_message
+from src.services.whatsapp import send_message
 from src.bot.scripts import SCRIPTS
 from src.lib.redis_client import get_redis
 from bson import ObjectId

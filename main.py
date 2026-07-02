@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.handlers.twilio import router as whatsapp_router
+from src.handlers.whatsapp import router as whatsapp_router
 from src.handlers.nomba import router as nomba_router
 
 app = FastAPI(title="Hustaq")

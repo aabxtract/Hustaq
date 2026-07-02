@@ -22,7 +22,7 @@ async def seed():
             "shop_slug": "amina-fabrics",
             "category": "fashion",
             "location": "Yaba Lagos",
-            "twilio_number": bot_number,  # The seller's WhatsApp number (Hustaq bot for now)
+            "wa_number": bot_number,  # The seller's WhatsApp number (Hustaq bot for now)
             "bot_paused": False,
             "balance_kobo": 0,
             "pending_balance_kobo": 0,

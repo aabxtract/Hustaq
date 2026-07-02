@@ -9,12 +9,8 @@ class Settings(BaseSettings):
     META_PHONE_NUMBER_ID: str = ""      # Hustaq bot's phone number ID
     META_BOT_NUMBER: str = ""           # Hustaq bot's display phone number (e.g. +14155238886)
     META_VERIFY_TOKEN: str = ""         # Random string for webhook verification
+    META_WABA_ID: str = ""
     META_API_VERSION: str = "v22.0"
-
-    # ── Legacy Twilio (kept for reference during migration) ──
-    TWILIO_ACCOUNT_SID: str = ""
-    TWILIO_AUTH_TOKEN: str = ""
-    TWILIO_WHATSAPP_NUMBER: str = ""
 
     # ── Nomba Payments ──
     NOMBA_CLIENT_ID: str = ""

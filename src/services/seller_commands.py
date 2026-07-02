@@ -4,7 +4,7 @@ from src.db.queries import (
     get_orders_by_seller, create_product,
 )
 from src.bot.scripts import SCRIPTS
-from src.services.twilio import send_message
+from src.services.whatsapp import send_message
 from src.lib.redis_client import get_redis
 
 CATEGORIES = {

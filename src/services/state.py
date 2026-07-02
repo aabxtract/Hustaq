@@ -1,9 +1,9 @@
 import json
 from src.bot.intent import classify_intent
 from src.bot.scripts import SCRIPTS
-from src.services.twilio import send_message
+from src.services.whatsapp import send_message
 from src.db.queries import (
-    get_seller_by_twilio_number, get_conversation, create_conversation,
+    get_seller_by_bot_number, get_conversation, create_conversation,
     update_conversation, get_products_by_seller,
     create_order, update_order,
 )
@@ -37,9 +37,9 @@ async def process_message(
     from_phone: str, to_phone: str,
     text: str, media_url: str | None
 ):
-    seller = await get_seller_by_twilio_number(to_phone)
+    seller = await get_seller_by_bot_number(to_phone)
     if not seller:
-        print(f"[STATE] No seller found for twilio_number='{to_phone}'")
+        print(f"[STATE] No seller found for bot_number='{to_phone}'")
         return
     if seller["bot_paused"]:
         print("[STATE] Bot is paused for this seller")

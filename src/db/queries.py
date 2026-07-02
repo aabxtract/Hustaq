@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 async def get_seller_by_phone(phone_number: str) -> dict | None:
     return await get_db().sellers.find_one({"phone_number": phone_number})
 
-async def get_seller_by_twilio_number(twilio_number: str) -> dict | None:
-    return await get_db().sellers.find_one({"twilio_number": twilio_number})
+async def get_seller_by_bot_number(wa_number: str) -> dict | None:
+    return await get_db().sellers.find_one({"wa_number": wa_number})
 
 async def create_seller(phone_number: str, shop_name: str, shop_slug: str) -> dict:
     doc = {
@@ -15,7 +15,7 @@ async def create_seller(phone_number: str, shop_name: str, shop_slug: str) -> di
         "shop_slug": shop_slug,
         "category": "",
         "location": "",
-        "twilio_number": "",
+        "wa_number": "",
         "bot_paused": False,
         "balance_kobo": 0,
         "pending_balance_kobo": 0,

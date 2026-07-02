@@ -14,7 +14,7 @@ Usage:
   2. Seed the database:  python seed.py
   3. Run tests:          python test_phase1.py
 
-Set FORMAT=meta or FORMAT=twilio env to choose payload format (default: meta).
+Set FORMAT=meta or FORMAT=legacy env to choose payload format (default: meta).
 Set TEST_URL=<url> to override the base URL (default: http://localhost:8001).
 """
 
@@ -32,10 +32,10 @@ except Exception:
 
 # ── Config ──────────────────────────────────────────────────────────────────
 BASE_URL = os.environ.get("TEST_URL", "http://localhost:8001")
-PAYLOAD_FORMAT = os.environ.get("FORMAT", "meta").lower()  # "meta" or "twilio"
+PAYLOAD_FORMAT = os.environ.get("FORMAT", "meta").lower()  # "meta" or "legacy"
 
 HUSTAQ_NUMBER = "+2347074270520"      # Hustaq bot display number — seller management
-SELLER_TWILIO = "+2347074270520"      # Seeded seller's twilio_number — buyer messages
+SELLER_BOT = "+2347074270520"        # Seeded seller's wa_number — buyer messages
 BUYER_PHONE = "+2340000000001"        # Fake buyer phone for testing
 SELLER_PHONE = "+2348012345678"       # Seeded demo seller phone
 META_VERIFY_TOKEN = "hustaq_123"      # Must match .env META_VERIFY_TOKEN
@@ -81,7 +81,7 @@ def build_meta_payload(from_phone: str, to_phone: str, body: str, msg_type: str 
     }
 
 
-def send_twilio_webhook(from_phone, to_phone, body, num_media=0):
+def send_legacy_webhook(from_phone, to_phone, body, num_media=0):
     """Simulate a Twilio WhatsApp webhook POST."""
     data = urllib.parse.urlencode({
         "From": f"whatsapp:{from_phone}",
@@ -92,7 +92,7 @@ def send_twilio_webhook(from_phone, to_phone, body, num_media=0):
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        f"{BASE_URL}/api/webhooks/twilio",
+        f"{BASE_URL}/api/webhooks/whatsapp",
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
@@ -111,7 +111,7 @@ def send_meta_webhook(from_phone, to_phone, body):
     payload = build_meta_payload(from_phone, to_phone, body)
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        f"{BASE_URL}/api/webhooks/twilio",
+        f"{BASE_URL}/api/webhooks/whatsapp",
         data=data,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -128,7 +128,7 @@ def send_meta_webhook(from_phone, to_phone, body):
 def send_meta_verify_request():
     """Simulate Meta webhook verification GET request (hub.challenge)."""
     url = (
-        f"{BASE_URL}/api/webhooks/twilio"
+        f"{BASE_URL}/api/webhooks/whatsapp"
         f"?hub.mode=subscribe"
         f"&hub.verify_token={META_VERIFY_TOKEN}"
         f"&hub.challenge=1234567890"
@@ -160,7 +160,7 @@ def run_test(label, from_phone, to_phone, msg, expected_status=200):
     if PAYLOAD_FORMAT == "meta":
         status, body = send_meta_webhook(from_phone, to_phone, msg)
     else:
-        status, body = send_twilio_webhook(from_phone, to_phone, msg)
+        status, body = send_legacy_webhook(from_phone, to_phone, msg)
     icon = PASS if status == expected_status else FAIL
     print(f"  {icon} [{status}] {label}")
     if status != expected_status:
@@ -209,25 +209,25 @@ def main():
 
     # 3. Buyer flow
     print(f"{INFO} Step 2: Buyer sends 'Hi' -> should get product catalog")
-    run_test("Buyer greeting", BUYER_PHONE, SELLER_TWILIO, "Hi")
+    run_test("Buyer greeting", BUYER_PHONE, SELLER_BOT, "Hi")
 
     print(f"{INFO} Step 3: Buyer selects product 1")
-    run_test("Buyer selects product", BUYER_PHONE, SELLER_TWILIO, "1")
+    run_test("Buyer selects product", BUYER_PHONE, SELLER_BOT, "1")
 
     print(f"{INFO} Step 4: Buyer taps 'Buy now' (option 1)")
-    run_test("Buyer buy now", BUYER_PHONE, SELLER_TWILIO, "1")
+    run_test("Buyer buy now", BUYER_PHONE, SELLER_BOT, "1")
 
     print(f"{INFO} Step 5: Buyer enters quantity")
-    run_test("Buyer enters qty", BUYER_PHONE, SELLER_TWILIO, "2")
+    run_test("Buyer enters qty", BUYER_PHONE, SELLER_BOT, "2")
 
     print(f"{INFO} Step 6: Buyer CONFIRMs cart")
-    run_test("Buyer confirms cart", BUYER_PHONE, SELLER_TWILIO, "CONFIRM")
+    run_test("Buyer confirms cart", BUYER_PHONE, SELLER_BOT, "CONFIRM")
 
     print(f"{INFO} Step 7: Buyer provides delivery address")
-    run_test("Buyer delivery address", BUYER_PHONE, SELLER_TWILIO, "12 Herbert Macaulay Way, Yaba Lagos")
+    run_test("Buyer delivery address", BUYER_PHONE, SELLER_BOT, "12 Herbert Macaulay Way, Yaba Lagos")
 
     print(f"{INFO} Step 8: Buyer claims PAID (Phase 1 manual ack)")
-    run_test("Buyer says PAID", BUYER_PHONE, SELLER_TWILIO, "PAID")
+    run_test("Buyer says PAID", BUYER_PHONE, SELLER_BOT, "PAID")
     print()
 
     # 4. New seller onboarding (unused phone number)
@@ -242,8 +242,8 @@ def main():
 
     # 5. Edge cases
     print(f"{INFO} Step 10: Edge cases")
-    run_test("Gibberish from buyer", BUYER_PHONE, SELLER_TWILIO, "asdfghjkl")
-    run_test("MENU resets buyer state", BUYER_PHONE, SELLER_TWILIO, "MENU")
+    run_test("Gibberish from buyer", BUYER_PHONE, SELLER_BOT, "asdfghjkl")
+    run_test("MENU resets buyer state", BUYER_PHONE, SELLER_BOT, "MENU")
     print()
 
     print("================================================")
