@@ -72,5 +72,15 @@ SCRIPTS = {
         "payment_ready": lambda shop, bank, acct: (
             f"Your payment account is ready.\nBuyers pay to: {shop} - {bank} - {acct}"
         ),
+        "product_photo_received": lambda: "Got the photo! What is the product name?",
+        "product_name_received": lambda: "What is the price in Naira? (numbers only)",
+        "product_saved": lambda name, price: (
+            f"Product added!\n{name} - N{price:,}\n\n"
+            "Send another photo to add more, or reply MENU."
+        ),
+        "invalid_price": lambda: "Please enter a valid price in Naira (numbers only, e.g. 8500)",
+        "unknown": lambda shop_name: (
+            f"I did not understand that.\n\nReply MENU to see your {shop_name} options."
+        ),
     }
 }

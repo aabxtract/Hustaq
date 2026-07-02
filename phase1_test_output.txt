@@ -1,0 +1,50 @@
+
+================================================
+  Hustaq Phase 1 — Meta API Tests
+  Payload format: Meta JSON format
+  Server:         http://localhost:8003
+================================================
+
+[94m→[0m Step 0: Health check
+  [92m✓[0m Server is alive at http://localhost:8003
+
+[94m→[0m Step 0.5: Meta webhook verification (GET)
+  [92m✓[0m [200] Meta webhook verification (GET)
+
+[94m→[0m Step 1: Seller texts MENU (seeded seller)
+  [92m✓[0m [200] Seller menu command
+
+[94m→[0m Step 2: Buyer sends 'Hi' -> should get product catalog
+  [92m✓[0m [200] Buyer greeting
+[94m→[0m Step 3: Buyer selects product 1
+  [92m✓[0m [200] Buyer selects product
+[94m→[0m Step 4: Buyer taps 'Buy now' (option 1)
+  [92m✓[0m [200] Buyer buy now
+[94m→[0m Step 5: Buyer enters quantity
+  [92m✓[0m [200] Buyer enters qty
+[94m→[0m Step 6: Buyer CONFIRMs cart
+  [92m✓[0m [200] Buyer confirms cart
+[94m→[0m Step 7: Buyer provides delivery address
+  [92m✓[0m [200] Buyer delivery address
+[94m→[0m Step 8: Buyer claims PAID (Phase 1 manual ack)
+  [92m✓[0m [200] Buyer says PAID
+
+[94m→[0m Step 9: New seller onboarding flow
+  [92m✓[0m [200] New seller first message
+  [92m✓[0m [200] New seller says YES
+  [92m✓[0m [200] New seller sets shop name
+  [92m✓[0m [200] New seller picks category
+  [92m✓[0m [200] New seller sets location
+
+[94m→[0m Step 10: Edge cases
+  [92m✓[0m [200] Gibberish from buyer
+  [91m✗[0m [500] MENU resets buyer state
+       Response: Internal Server Error
+
+================================================
+  Phase 1 tests complete!
+  Format used: Meta JSON format
+  Check server logs for reply messages.
+================================================
+
+Done 

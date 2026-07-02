@@ -1,17 +1,21 @@
-import sys
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-
 """
-Hustaq Phase 1 Test Script
-===========================
-Simulates Twilio webhook calls against your live Lambda to test the full
-buyer flow without needing a real phone.
+Hustaq Phase 1 — Meta WhatsApp Cloud API Test Script
+======================================================
+Tests the Meta WhatsApp Cloud API webhook against your local server
+to verify the full Phase 1 buyer/seller flow.
+
+Supports:
+  - Meta webhook verification (GET with hub.challenge)
+  - Meta-format JSON POST payloads (as Meta would send them)
+  - Legacy Twilio form-encoded POST payloads
 
 Usage:
-    python test_phase1.py
+  1. Start the server:  uvicorn main:app --port 8001
+  2. Seed the database:  python seed.py
+  3. Run tests:          python test_phase1.py
 
-Make sure SKIP_TWILIO_VERIFY=true is set in your Lambda env vars,
-otherwise the signature check will reject these test requests.
+Set FORMAT=meta or FORMAT=twilio env to choose payload format (default: meta).
+Set TEST_URL=<url> to override the base URL (default: http://localhost:8001).
 """
 
 import sys
@@ -19,20 +23,22 @@ import urllib.request
 import urllib.parse
 import json
 import time
+import os
 
-# Force UTF-8 output so the status symbols (✓✗→) render on Windows consoles
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
     pass
 
 # ── Config ──────────────────────────────────────────────────────────────────
-import os as _os
-LAMBDA_URL = "http://127.0.0.1:8001"  # Local server; swap back to AWS URL for prod)
-HUSTAQ_NUMBER    = "+14155238886"     # Hustaq central number — seller management
-SELLER_TWILIO    = "+14155238886"     # Seeded seller's twilio_number — buyer messages
-BUYER_PHONE      = "+2340000000001"   # Fake buyer phone for testing
-SELLER_PHONE     = "+2348012345678"   # Seeded demo seller phone
+BASE_URL = os.environ.get("TEST_URL", "http://localhost:8001")
+PAYLOAD_FORMAT = os.environ.get("FORMAT", "meta").lower()  # "meta" or "twilio"
+
+HUSTAQ_NUMBER = "+2347074270520"      # Hustaq bot display number — seller management
+SELLER_TWILIO = "+2347074270520"      # Seeded seller's twilio_number — buyer messages
+BUYER_PHONE = "+2340000000001"        # Fake buyer phone for testing
+SELLER_PHONE = "+2348012345678"       # Seeded demo seller phone
+META_VERIFY_TOKEN = "hustaq_123"      # Must match .env META_VERIFY_TOKEN
 # ────────────────────────────────────────────────────────────────────────────
 
 PASS = "\033[92m✓\033[0m"
@@ -40,18 +46,53 @@ FAIL = "\033[91m✗\033[0m"
 INFO = "\033[94m→\033[0m"
 
 
-def send_twilio_webhook(from_phone: str, to_phone: str, body: str, num_media: int = 0) -> tuple[int, str]:
+# ── Meta API payload builder ─────────────────────────────────────────────────
+
+def build_meta_payload(from_phone: str, to_phone: str, body: str, msg_type: str = "text") -> dict:
+    """Build a payload in Meta WhatsApp Cloud API webhook JSON format."""
+    clean_from = from_phone.replace("whatsapp:", "")
+    clean_to = to_phone.replace("whatsapp:", "")
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [{
+            "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+            "changes": [{
+                "value": {
+                    "messaging_product": "whatsapp",
+                    "metadata": {
+                        "display_phone_number": clean_to,
+                        "phone_number_id": "PHONE_NUMBER_ID"
+                    },
+                    "contacts": [{
+                        "profile": {"name": "Test User"},
+                        "wa_id": clean_from
+                    }],
+                    "messages": [{
+                        "from": clean_from,
+                        "id": f"wamid.test.{int(time.time())}",
+                        "timestamp": str(int(time.time())),
+                        "type": msg_type,
+                        "text": {"body": body}
+                    }]
+                },
+                "field": "messages"
+            }]
+        }]
+    }
+
+
+def send_twilio_webhook(from_phone, to_phone, body, num_media=0):
     """Simulate a Twilio WhatsApp webhook POST."""
     data = urllib.parse.urlencode({
         "From": f"whatsapp:{from_phone}",
-        "To":   f"whatsapp:{to_phone}",
+        "To": f"whatsapp:{to_phone}",
         "Body": body,
         "NumMedia": str(num_media),
         "MessageSid": f"SMtest{int(time.time())}",
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        f"{LAMBDA_URL}/webhooks/twilio",
+        f"{BASE_URL}/api/webhooks/twilio",
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
@@ -65,8 +106,46 @@ def send_twilio_webhook(from_phone: str, to_phone: str, body: str, num_media: in
         return 0, str(ex)
 
 
-def check_health() -> bool:
-    req = urllib.request.Request(f"{LAMBDA_URL}/health", method="GET")
+def send_meta_webhook(from_phone, to_phone, body):
+    """Send a payload in Meta WhatsApp Cloud API JSON format."""
+    payload = build_meta_payload(from_phone, to_phone, body)
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{BASE_URL}/api/webhooks/twilio",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status, resp.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+    except Exception as ex:
+        return 0, str(ex)
+
+
+def send_meta_verify_request():
+    """Simulate Meta webhook verification GET request (hub.challenge)."""
+    url = (
+        f"{BASE_URL}/api/webhooks/twilio"
+        f"?hub.mode=subscribe"
+        f"&hub.verify_token={META_VERIFY_TOKEN}"
+        f"&hub.challenge=1234567890"
+    )
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode()
+            return resp.status, body
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+    except Exception as ex:
+        return 0, str(ex)
+
+
+def check_health():
+    req = urllib.request.Request(f"{BASE_URL}/api/health", method="GET")
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read())
@@ -76,30 +155,51 @@ def check_health() -> bool:
         return False
 
 
-def run_test(label: str, from_phone: str, to_phone: str, msg: str, expected_status: int = 200):
-    status, body = send_twilio_webhook(from_phone, to_phone, msg)
+def run_test(label, from_phone, to_phone, msg, expected_status=200):
+    """Send a webhook in the configured format and check the status code."""
+    if PAYLOAD_FORMAT == "meta":
+        status, body = send_meta_webhook(from_phone, to_phone, msg)
+    else:
+        status, body = send_twilio_webhook(from_phone, to_phone, msg)
     icon = PASS if status == expected_status else FAIL
     print(f"  {icon} [{status}] {label}")
     if status != expected_status:
         print(f"       Response: {body[:300]}")
-    time.sleep(0.8)   # avoid hammering Lambda cold start
+    time.sleep(0.5)
     return status == expected_status
 
 
-# ── Test Suite ───────────────────────────────────────────────────────────────
+def run_verify_test():
+    """Test Meta webhook verification (GET)."""
+    status, body = send_meta_verify_request()
+    icon = PASS if status == 200 and body == "1234567890" else FAIL
+    print(f"  {icon} [{status}] Meta webhook verification (GET)")
+    if status != 200 or body != "1234567890":
+        print(f"       Expected challenge '1234567890', got: {body[:100]}")
+    time.sleep(0.3)
+    return status == 200 and body == "1234567890"
+
 
 def main():
-    print("\n========================================")
-    print("  Hustaq Phase 1 — Live Lambda Tests")
-    print("========================================\n")
+    fmt_label = "Meta JSON format" if PAYLOAD_FORMAT == "meta" else "Twilio form-encoded format"
+    print("\n================================================")
+    print("  Hustaq Phase 1 — Meta API Tests")
+    print(f"  Payload format: {fmt_label}")
+    print(f"  Server:         {BASE_URL}")
+    print("================================================\n")
 
-    # 1. Health
+    # 0. Health check
     print(f"{INFO} Step 0: Health check")
     if check_health():
-        print(f"  {PASS} Lambda is alive")
+        print(f"  {PASS} Server is alive at {BASE_URL}")
     else:
-        print(f"  {FAIL} Lambda not responding — check URL + deployment")
+        print(f"  {FAIL} Server not responding — start with: uvicorn main:app --port 8001")
         return
+    print()
+
+    # 1. Meta webhook verification
+    print(f"{INFO} Step 0.5: Meta webhook verification (GET)")
+    run_verify_test()
     print()
 
     # 2. Seller command: existing seeded seller sends MENU
@@ -108,7 +208,7 @@ def main():
     print()
 
     # 3. Buyer flow
-    print(f"{INFO} Step 2: Buyer sends 'Hi' → should get product catalog")
+    print(f"{INFO} Step 2: Buyer sends 'Hi' -> should get product catalog")
     run_test("Buyer greeting", BUYER_PHONE, SELLER_TWILIO, "Hi")
 
     print(f"{INFO} Step 3: Buyer selects product 1")
@@ -146,10 +246,11 @@ def main():
     run_test("MENU resets buyer state", BUYER_PHONE, SELLER_TWILIO, "MENU")
     print()
 
-    print("========================================")
-    print("  Done! Check your WhatsApp & CloudWatch")
-    print("  for actual bot reply messages.")
-    print("========================================\n")
+    print("================================================")
+    print("  Phase 1 tests complete!")
+    print(f"  Format used: {fmt_label}")
+    print("  Check server logs for reply messages.")
+    print("================================================\n")
 
 
 if __name__ == "__main__":

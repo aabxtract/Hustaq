@@ -2,13 +2,15 @@ from fastapi import APIRouter, Request, Response
 from src.db.queries import (
     get_payment_by_reference, create_payment,
     get_order_by_id, update_order,
-    update_seller,
+    update_seller, get_seller_by_phone,
 )
 from src.services.twilio import send_message
 from src.bot.scripts import SCRIPTS
+from src.lib.redis_client import get_redis
 from bson import ObjectId
 
 router = APIRouter()
+
 
 @router.post("/nomba")
 async def nomba_webhook(request: Request):
@@ -21,13 +23,22 @@ async def nomba_webhook(request: Request):
     data = body["data"]
     reference = data["reference"]
 
-    # Idempotency — check if already processed
-    existing = await get_payment_by_reference(reference)
-    if existing:
+    # Idempotency — Redis fast check + MongoDB fallback
+    r = get_redis()
+    idem_key = f"nomba:processed:{reference}"
+    if r.get(idem_key):
         return Response(content="", status_code=200)
 
+    existing = await get_payment_by_reference(reference)
+    if existing:
+        r.setex(idem_key, 86400, "1")
+        return Response(content="", status_code=200)
+
+    # Mark as processing immediately
+    r.setex(idem_key, 86400, "1")
+
     order_id = ObjectId(data["orderId"])
-    amount_kobo = int(data["amount"])
+    amount_kobo = int(float(data["amount"]) * 100)
     customer = data.get("customer", {})
 
     order = await get_order_by_id(order_id)
@@ -49,15 +60,16 @@ async def nomba_webhook(request: Request):
     })
 
     # Notify buyer
-    await send_message(customer.get("phone", ""), SCRIPTS["buyer"]["CONFIRM_received"](order["order_number"]))
+    effective_buyer = customer.get("phone", "") or order.get("buyer_phone", "")
+    if effective_buyer:
+        await send_message(effective_buyer, SCRIPTS["buyer"]["CONFIRM_received"](order["order_number"]))
 
     # Notify seller
-    from src.db.queries import get_seller_by_phone
     seller = await get_seller_by_phone(order["seller_id"])
     if seller:
         await send_message(seller["phone_number"], SCRIPTS["seller"]["new_order"](
             order["order_number"], amount_kobo // 100,
-            customer.get("phone", ""), order["delivery_address"]
+            effective_buyer, order.get("delivery_address", ""),
         ))
 
     return Response(content="", status_code=200)

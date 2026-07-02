@@ -2,12 +2,12 @@ from typing import Literal
 
 Intent = Literal[
     "BROWSE", "SELECT", "QUANTITY", "CHECKOUT", "CONFIRM",
-    "CANCEL", "GREETING", "HANDOFF", "TRACK", "PAID", "UNKNOWN"
+    "CANCEL", "GREETING", "HANDOFF", "TRACK", "PAID", "MENU", "UNKNOWN"
 ]
 
 PATTERNS: dict[str, list[str]] = {
     "GREETING": ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "oya", "sup"],
-    "BROWSE": ["what", "have", "products", "catalog", "show", "list", "menu", "options", "items", "see"],
+    "BROWSE": ["what", "have", "products", "catalog", "show", "list", "options", "items", "see"],
     "SELECT": ["1", "2", "3", "4", "5", "first", "second", "third", "that one", "this one"],
     "QUANTITY": ["how many", "give me", "i want", "send me", "order", "yards", "pieces", "units", "bags"],
     "CHECKOUT": ["buy", "checkout", "proceed", "done", "go ahead"],
@@ -16,14 +16,19 @@ PATTERNS: dict[str, list[str]] = {
     "CANCEL": ["cancel", "stop", "no", "never mind", "change mind", "nope"],
     "TRACK": ["where", "track", "status", "delivery", "shipped", "when", "update"],
     "HANDOFF": ["speak to", "talk to", "call", "human", "agent", "real person", "manager", "owner"],
+    "MENU": ["menu", "0", "back", "restart", "start over", "home"],
 }
 
 def classify_intent(message: str, current_state: str) -> Intent:
     m = message.strip().lower()
+    if m in ("menu", "0", "back"):
+        return "MENU"
     if current_state == "browse" and m.isdigit():
         return "SELECT"
     if current_state == "select" and m == "1":
         return "CHECKOUT"
+    if current_state == "select" and m == "3":
+        return "BROWSE"
     if current_state == "cart" and m.isdigit():
         return "QUANTITY"
     if current_state == "confirm" and any(p in m for p in PATTERNS["PAID"]):
@@ -31,4 +36,6 @@ def classify_intent(message: str, current_state: str) -> Intent:
     for intent, patterns in PATTERNS.items():
         if any(p in m for p in patterns):
             return intent  # type: ignore
+    if m.isdigit():
+        return "SELECT"
     return "UNKNOWN"

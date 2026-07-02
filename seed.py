@@ -1,22 +1,28 @@
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
+from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timezone
 
 async def seed():
     client = AsyncIOMotorClient(os.environ["MONGODB_URI"])
     db = client.hustaq
 
-    # Seed seller
+    # ── Hustaq bot number (Meta WhatsApp Cloud API) ──
+    bot_number = os.environ.get("META_BOT_NUMBER", "")
+
+    # ── Seed demo seller ──
     await db.sellers.update_one(
         {"phone_number": "+2348012345678"},
-        {"$setOnInsert": {
+        {"$set": {
             "phone_number": "+2348012345678",
             "shop_name": "Amina Fabrics",
             "shop_slug": "amina-fabrics",
             "category": "fashion",
             "location": "Yaba Lagos",
-            "twilio_number": os.environ["TWILIO_WHATSAPP_NUMBER"],
+            "twilio_number": bot_number,  # The seller's WhatsApp number (Hustaq bot for now)
             "bot_paused": False,
             "balance_kobo": 0,
             "pending_balance_kobo": 0,
@@ -30,7 +36,7 @@ async def seed():
 
     seller = await db.sellers.find_one({"shop_slug": "amina-fabrics"})
 
-    # Seed product
+    # ── Seed demo product ──
     await db.products.update_one(
         {"seller_id": seller["_id"], "name": "Hollandaise Ankara"},
         {"$setOnInsert": {
@@ -46,6 +52,9 @@ async def seed():
     )
 
     print("Seed complete!")
+    print(f"  Seller: Amina Fabrics (+2348012345678)")
+    print(f"  Bot number: {bot_number}")
+    print(f"  Product: Hollandaise Ankara — N8,500")
     client.close()
 
 if __name__ == "__main__":

@@ -1,0 +1,150 @@
+INFO:     127.0.0.1:62460 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54652 - "GET /api/health HTTP/1.1" 200 OK
+[META VERIFY] mode=subscribe token=hustaq_123
+[META VERIFY] Webhook verified OK
+INFO:     127.0.0.1:54655 - "GET /api/webhooks/twilio?hub.mode=subscribe&hub.verify_token=hustaq_123&hub.challenge=1234567890 HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2348012345678 To=+2347074270520 Body=MENU
+[WEBHOOK] -> seller command path
+[REDIS] Connected successfully
+[META SEND] to=+2348012345678 body=Amina Fabrics - Hustaq
+
+1. Add Product
+2. View Orders
+3. Check Balance
+4. Settin...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AFxJqKDcoJmm0ElFzNjDj-Q'}}
+INFO:     127.0.0.1:54657 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=Hi
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=GREETING text=Hi
+[META SEND] to=+2340000000001 body=Sorry, I did not get that. Reply MENU to start over....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AykboTMcnsWlAZxsvvYdoRA'}}
+INFO:     127.0.0.1:54668 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=1
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=SELECT text=1
+[META SEND] to=+2340000000001 body=Sorry, I did not get that. Reply MENU to start over....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AOQyrQaiTFOnFZDM6hUSsnN'}}
+INFO:     127.0.0.1:54671 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=1
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=SELECT text=1
+[META SEND] to=+2340000000001 body=Sorry, I did not get that. Reply MENU to start over....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'Ayx7kLY9ZPjCIXhJaM16EN5'}}
+INFO:     127.0.0.1:54674 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60800 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51884 - "GET /api/health HTTP/1.1" 200 OK
+[META VERIFY] mode=subscribe token=hustaq_123
+[META VERIFY] Webhook verified OK
+INFO:     127.0.0.1:51886 - "GET /api/webhooks/twilio?hub.mode=subscribe&hub.verify_token=hustaq_123&hub.challenge=1234567890 HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2348012345678 To=+2347074270520 Body=MENU
+[WEBHOOK] -> seller command path
+[META SEND] to=+2348012345678 body=Amina Fabrics - Hustaq
+
+1. Add Product
+2. View Orders
+3. Check Balance
+4. Settin...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AMvnUb5SEf4dEJV2FlLW9m2'}}
+INFO:     127.0.0.1:51888 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=Hi
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=idle intent=GREETING text=Hi
+[META SEND] to=+2340000000001 body=Hi! Welcome to Amina Fabrics. Here is what we have:
+
+1. Hollandaise Ankara - N8,...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AtAtOdOVk31s2cZismq6hAM'}}
+INFO:     127.0.0.1:54167 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=1
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=browse intent=SELECT text=1
+[META SEND] to=+2340000000001 body=Hollandaise Ankara - N8,500
+20 in stock.
+
+1. Buy now
+2. Ask a question
+3. Back t...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AtySeGS0BaJn8Yqw7uBiuzI'}}
+INFO:     127.0.0.1:60019 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=1
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=select intent=CHECKOUT text=1
+[META SEND] to=+2340000000001 body=How many? (Max 20)...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AO5Tyl8thOfjx5iwOfmNIa2'}}
+INFO:     127.0.0.1:60024 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=2
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=cart intent=QUANTITY text=2
+[META SEND] to=+2340000000001 body=2 x N8,500 = N17,000
+Reply CONFIRM to proceed....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AlHS4cpWRjJXluc2Kn03jJO'}}
+INFO:     127.0.0.1:62170 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=CONFIRM
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=checkout intent=CONFIRM text=CONFIRM
+[META SEND] to=+2340000000001 body=Delivery to?
+1. Type your address
+2. Send your location...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'APerjl05cMGoO9WHJ8wUQqH'}}
+INFO:     127.0.0.1:59063 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=12 Herbert Macaulay Way, Yaba Lagos
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=delivery intent=SELECT text=12 Herbert Macaulay Way, Yaba Lagos
+[META SEND] to=+2340000000001 body=Order Summary
+Total: N17,000
+
+Pay to:
+Amina Fabrics
+Bank TBA - Account TBA
+
+Repl...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AWmuLL0RXEdGtngyY0dIz3v'}}
+INFO:     127.0.0.1:56105 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=PAID
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=PAID text=PAID
+[META SEND] to=+2340000000001 body=Checking your payment... one moment....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'ABflEa2ZYzd_5-zQPWmOas1'}}
+INFO:     127.0.0.1:61871 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2349099998877 To=+2347074270520 Body=I want to sell
+[WEBHOOK] -> new seller onboarding path
+[META SEND] to=+2349099998877 body=Welcome to Hustaq! I will answer buyers, take orders, and confirm payments.
+Read...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AuIkDViVt8xKGejU2KcKY88'}}
+INFO:     127.0.0.1:50541 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2349099998877 To=+2347074270520 Body=YES
+[WEBHOOK] -> seller command path
+[META SEND] to=+2349099998877 body=What is your shop name?...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'AZ_QedDsy-YyPS6bwnTsFr3'}}
+INFO:     127.0.0.1:50060 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2349099998877 To=+2347074270520 Body=Test Shop NG
+[WEBHOOK] -> seller command path
+[META SEND] to=+2349099998877 body=What do you sell?
+1. Fashion
+2. Food and Drinks
+3. Beauty
+4. Gadgets
+5. Other...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'A801eegkiG1648QAf49dnsx'}}
+INFO:     127.0.0.1:50064 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2349099998877 To=+2347074270520 Body=1
+[WEBHOOK] -> seller command path
+[META SEND] to=+2349099998877 body=Where are you based? (e.g. Yaba Lagos)...
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'ApO8-pBVdjzQuwKE7ZKBK_A'}}
+INFO:     127.0.0.1:60893 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2349099998877 To=+2347074270520 Body=Ikeja Lagos
+[WEBHOOK] -> seller command path
+Nomba error [Errno 11001] getaddrinfo failed
+[META SEND] to=+2349099998877 body=Test Shop NG is live! Send a photo to add your first product....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'Ah6ExnOdD0x7ta9WyD94cFI'}}
+INFO:     127.0.0.1:53185 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=asdfghjkl
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=UNKNOWN text=asdfghjkl
+[META SEND] to=+2340000000001 body=Sorry, I did not get that. Reply MENU to start over....
+[META SEND] FAILED: 400 {'error': {'message': "Unsupported post request. Object with ID '61591739543766' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api", 'type': 'GraphMethodException', 'code': 100, 'error_subcode': 33, 'fbtrace_id': 'A5e7HDrcIKJIJYxvYNB9hpZ'}}
+INFO:     127.0.0.1:52181 - "POST /api/webhooks/twilio HTTP/1.1" 200 OK
+[WEBHOOK] (Meta format) From=+2340000000001 To=+2347074270520 Body=MENU
+[WEBHOOK] -> buyer state machine path
+[STATE] seller=Amina Fabrics state=confirm intent=MENU text=MENU
+INFO:     127.0.0.1:52185 - "POST /api/webhooks/twilio HTTP/1.1" 500 Internal Server Error

@@ -2,7 +2,7 @@
 
 WhatsApp-native commerce platform for Nigerian informal sellers.
 
-**Tech Stack:** Python 3.12 · FastAPI · Vercel · MongoDB Atlas · Twilio WhatsApp · Nomba Payments · httpx · Pydantic v2
+**Tech Stack:** Python 3.12 · FastAPI · Vercel · MongoDB Atlas · Upstash Redis · Meta WhatsApp Cloud API · Nomba Payments · httpx · Pydantic v2
 
 ---
 
@@ -23,14 +23,14 @@ WhatsApp-native commerce platform for Nigerian informal sellers.
 
 ## 1. Product Overview & Core Demo Loop
 
-Hustaq is a WhatsApp-native commerce platform for Nigerian informal sellers. Sellers manage their entire shop by texting a WhatsApp bot number. Buyers message the seller's WhatsApp number; Hustaq intercepts those messages via Twilio, runs them through a Python state machine, and replies with product catalogs, order confirmations, and payment instructions. Payments flow through Nomba virtual accounts. When a buyer pays, Nomba fires a webhook, Hustaq confirms the order automatically, and both buyer and seller receive WhatsApp notifications — all without a website or app.
+Hustaq is a WhatsApp-native commerce platform for Nigerian informal sellers. Sellers manage their entire shop by texting a WhatsApp bot number. Buyers message the seller's WhatsApp number; Hustaq intercepts those messages via Meta WhatsApp Cloud API, runs them through a Python state machine, and replies with product catalogs, order confirmations, and payment instructions. Payments flow through Nomba virtual accounts. When a buyer pays, Nomba fires a webhook, Hustaq confirms the order automatically, and both buyer and seller receive WhatsApp notifications — all without a website or app.
 
 ### Core Demo Loop
 
 | Step | Flow |
 |------|------|
 | 1 | Seller texts Hustaq bot → onboarding completes → Nomba virtual account issued |
-| 2 | Buyer messages seller WhatsApp → Twilio webhook fires → FastAPI replies with catalog |
+| 2 | Buyer messages seller WhatsApp → Meta webhook fires → FastAPI replies with catalog |
 | 3 | Buyer selects product → confirms quantity → receives order summary with bank details |
 | 4 | Buyer pays to Nomba virtual account via bank transfer |
 | 5 | Nomba fires payment.success webhook → FastAPI confirms in under 2 seconds |
@@ -38,7 +38,7 @@ Hustaq is a WhatsApp-native commerce platform for Nigerian informal sellers. Sel
 
 ### Build Strategy
 
-Phase 1 first: build everything except Nomba. Get Twilio receiving messages, the FastAPI state machine routing correctly, the full buyer conversation working end-to-end with a static bank placeholder, and seller commands functional. Only after the full conversation loop works cleanly do you add Phase 2 — Nomba virtual accounts and the payment webhook. This means you always have a working demo, even if Nomba integration hits a snag.
+Phase 1 first: build everything except Nomba. Get Meta WhatsApp receiving messages, the FastAPI state machine routing correctly, the full buyer conversation working end-to-end with a static bank placeholder, and seller commands functional. Only after the full conversation loop works cleanly do you add Phase 2 — Nomba virtual accounts and the payment webhook. This means you always have a working demo, even if Nomba integration hits a snag.
 
 ---
 
@@ -49,11 +49,13 @@ Phase 1 first: build everything except Nomba. Get Twilio receiving messages, the
 | Language | Python 3.12 | Primary backend language. Type hints throughout. |
 | Web Framework | FastAPI | HTTP routing, request parsing, dependency injection. Async-native. |
 | Deployment | Vercel | Serverless hosting for FastAPI via API routes. |
-| WhatsApp Layer | Twilio WhatsApp Business | Approved sender. Inbound webhooks + outbound message sends. |
-| Twilio SDK | twilio (Python) | Client for Twilio REST API. Sends messages, verifies signatures. |
+| WhatsApp Layer | Meta WhatsApp Cloud API | Approved sender. Inbound webhooks + outbound message sends via Graph API. |
+| Meta Graph API | httpx (async) | Send messages, media, templates via Meta's API. |
 | HTTP Client | httpx | Async HTTP client for Nomba API calls. |
 | Database | MongoDB Atlas | Primary storage. Collections: sellers, products, orders, conversations, payments. |
 | DB Driver | Motor (async MongoDB) | Async MongoDB driver for Python. |
+| Cache | Upstash Redis | Conversation state, onboarding state, Nomba token cache, idempotency keys. |
+| Redis Client | redis-py | Python Redis client. `redis.from_url()` connection. |
 | Data Validation | Pydantic v2 | Request/response models, env var parsing via BaseSettings. |
 | Payments | Nomba API (sandbox) | Virtual account creation, payment.success webhooks. |
 | Version Control | GitHub | Source control with tagged checkpoints per phase. |
@@ -63,10 +65,10 @@ Phase 1 first: build everything except Nomba. Get Twilio receiving messages, the
 ```
 fastapi==0.111.0
 uvicorn==0.30.0
-twilio==9.2.2
 httpx==0.27.0
 motor==3.4.0
 pymongo==4.7.0
+redis==5.0.4
 pydantic==2.7.0
 pydantic-settings==2.3.0
 python-multipart==0.0.9
@@ -77,7 +79,7 @@ python-multipart==0.0.9
 ## 3. Architecture Overview
 
 ```
-Twilio WhatsApp
+Meta WhatsApp Cloud API
     |
     | POST (webhook)
     v
@@ -88,19 +90,20 @@ FastAPI Router (src/handlers/twilio.py)
     |
     +--------> Motor ---------> MongoDB Atlas
     |
+    +--------> redis-py ------> Upstash Redis
+    |
     +--------> httpx ---------> Nomba API
     |
-    +--------> twilio SDK ----> Twilio REST API --> WhatsApp
+    +--------> Meta Graph API --> WhatsApp
 ```
 
 ### What You Need (Hackathon MVP)
 
 - **Vercel account** (free tier works)
 - **MongoDB Atlas** (free M0 cluster)
-- **Twilio WhatsApp** (sandbox or approved sender)
+- **Upstash Redis** (free tier, serverless)
+- **Meta WhatsApp Cloud API** (sandbox or approved sender)
 - **Nomba** (sandbox credentials)
-
-No Redis. No S3. No Secrets Manager. No VPC. No IAM roles. Just four services.
 
 ---
 
@@ -113,31 +116,33 @@ hustaq/
 │
 ├── src/
 │   ├── handlers/
-│   │   ├── twilio.py          # FastAPI router — Twilio webhook receiver
+│   │   ├── twilio.py          # FastAPI router — Meta webhook receiver
 │   │   └── nomba.py           # FastAPI router — Nomba payment webhook
 │   │
 │   ├── services/
-│   │   ├── twilio.py          # send_message(), verify_twilio_signature()
+│   │   ├── twilio.py          # send_message() via Meta Graph API
 │   │   ├── nomba.py           # get_token(), create_virtual_account()
-│   │   └── state.py           # process_message() — full state machine
+│   │   ├── state.py           # process_message() — full state machine
+│   │   └── seller_commands.py # Seller onboarding + commands
 │   │
 │   ├── bot/
 │   │   ├── scripts.py         # SCRIPTS dict — every buyer + seller message
-│   │   ├── intent.py          # classify_intent(message, state) -> Intent
-│   │   └── onboarding.py      # Seller onboarding linear conversation
+│   │   └── intent.py          # classify_intent(message, state) -> Intent
 │   │
 │   ├── db/
 │   │   ├── client.py          # Motor async client singleton
 │   │   └── queries.py         # All DB read/write functions
 │   │
 │   └── lib/
-│       └── config.py          # Pydantic Settings — all env vars
+│       ├── config.py          # Pydantic Settings — all env vars
+│       └── redis_client.py    # Upstash Redis connection singleton
 │
 ├── docs/
 │   └── DEMO_SCRIPT.md         # Exact messages to type on demo day
 │
 ├── api/
 │   └── index.py               # Vercel serverless function entry point
+├── seed.py                    # MongoDB seed script
 ├── vercel.json                # Vercel config
 ├── requirements.txt
 └── README.md
@@ -145,7 +150,7 @@ hustaq/
 
 ### Solo Git Workflow
 
-- Commit after every working unit, not at end of day. `feat: twilio webhook receives and logs messages` is a good commit.
+- Commit after every working unit, not at end of day. `feat: meta webhook receives and logs messages` is a good commit.
 - Never commit broken code. If something is mid-way: `git stash`
 - Tag clean states before risky changes: `git tag v0.1-webhook-working`
 - Before adding Nomba: `git tag v0.2-pre-nomba` — clean rollback point if Nomba breaks anything
@@ -154,7 +159,7 @@ hustaq/
 
 ## 5. Phase 1 Build — Core App Without Nomba
 
-Phase 1 exit condition: a buyer texts your Twilio number, sees the catalog, selects a product, confirms quantity, gives their address, and receives an order summary with a static bank placeholder. The order document exists in MongoDB with status `pending`. Everything below must work before you touch Nomba.
+Phase 1 exit condition: a buyer texts your Meta WhatsApp number, sees the catalog, selects a product, confirms quantity, gives their address, and receives an order summary with a static bank placeholder. The order document exists in MongoDB with status `pending`. Everything below must work before you touch Nomba.
 
 ### 5.1 Vercel Setup
 
@@ -189,7 +194,7 @@ No schema migration needed. MongoDB is schemaless. Collections are created autom
   "shop_slug": "amina-fabrics",
   "category": "fashion",
   "location": "Yaba Lagos",
-  "twilio_number": "whatsapp:+234YOURTWILIONUMBER",
+  "twilio_number": "whatsapp:+234YOURBOTNUMBER",
   "bot_paused": false,
   "balance_kobo": 0,
   "pending_balance_kobo": 0,
@@ -285,7 +290,7 @@ async def seed():
             "shop_slug": "amina-fabrics",
             "category": "fashion",
             "location": "Yaba Lagos",
-            "twilio_number": os.environ["TWILIO_WHATSAPP_NUMBER"],
+            "twilio_number": os.environ["META_BOT_NUMBER"],
             "bot_paused": False,
             "balance_kobo": 0,
             "pending_balance_kobo": 0,
@@ -329,23 +334,31 @@ python3.12 -m venv .venv
 source .venv/bin/activate
 
 # Install all dependencies
-pip install fastapi uvicorn twilio httpx motor pymongo \
-    pydantic pydantic-settings python-multipart
+pip install fastapi uvicorn httpx motor pymongo \
+    pydantic pydantic-settings python-multipart redis
 pip freeze > requirements.txt
 ```
 
 ```python
 # main.py — FastAPI app entry point
 from fastapi import FastAPI
-from src.handlers.twilio import router as twilio_router
+from src.handlers.twilio import router as whatsapp_router
 from src.handlers.nomba import router as nomba_router
 
 app = FastAPI(title="Hustaq")
-app.include_router(twilio_router, prefix="/api/webhooks")
+app.include_router(whatsapp_router, prefix="/api/webhooks")
 app.include_router(nomba_router, prefix="/api/webhooks")
 
-@app.get("/api/health")
+# Also mount at /webhooks for backward compatibility
+app.include_router(whatsapp_router, prefix="/webhooks")
+app.include_router(nomba_router, prefix="/webhooks")
+
+@app.get("/health")
 async def health():
+    return {"status": "ok"}
+
+@app.get("/api/health")
+async def api_health():
     return {"status": "ok"}
 ```
 
@@ -376,17 +389,18 @@ from main import app
 # Vercel expects a handler named "app"
 ```
 
-### 5.6 Lib Layer — Config, DB Client
+### 5.6 Lib Layer — Config, DB Client, Redis Client
 
 ```python
 # src/lib/config.py
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    MONGODB_URI: str
-    TWILIO_ACCOUNT_SID: str
-    TWILIO_AUTH_TOKEN: str
-    TWILIO_WHATSAPP_NUMBER: str
+    MONGODB_URI: str = "mongodb://localhost:27017/hustaq"
+    UPSTASH_REDIS_URL: str = "redis://localhost:6379"
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_WHATSAPP_NUMBER: str = "whatsapp:+14155238886"
     NOMBA_CLIENT_ID: str = ""
     NOMBA_CLIENT_SECRET: str = ""
     NOMBA_ENV: str = "sandbox"
@@ -395,7 +409,28 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
-settings = Settings()
+_settings = None
+
+def get_settings():
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+```
+
+```python
+# src/lib/redis_client.py
+import redis
+from src.lib.config import get_settings
+
+_client = None
+
+def get_redis():
+    global _client
+    if _client is None:
+        settings = get_settings()
+        _client = redis.from_url(settings.UPSTASH_REDIS_URL, decode_responses=True)
+    return _client
 ```
 
 ```python
@@ -1064,23 +1099,31 @@ Start Phase 2 only after the Phase 1 exit condition passes cleanly. Add Nomba in
 
 ### Step 1: Nomba token service
 
-Create `src/services/nomba.py`. Write `get_nomba_token()` using httpx to POST `/auth/token/issue` with `grant_type=client_credentials`. Cache the token in memory (simple dict with expiry check — no Redis needed). Nomba credentials come from environment variables. Sandbox base URL: `https://api.sandbox.nomba.com/v1`
+Create `src/services/nomba.py`. Write `get_nomba_token()` using httpx to POST `/auth/token/issue` with `grant_type=client_credentials`. Cache the token in Redis as `nomba:token` with 3500s TTL. Nomba credentials come from environment variables. Sandbox base URL: `https://api.sandbox.nomba.com/v1`
 
 ```python
 # src/services/nomba.py
-import httpx, time
-from src.lib.config import settings
+import httpx
+from src.lib.config import get_settings
+from src.lib.redis_client import get_redis
 
-_token_cache: dict[str, str | float] = {}
+SANDBOX_URL = "https://api.sandbox.nomba.com/v1"
+PROD_URL = "https://api.nomba.com/v1"
+
+def _base_url():
+    settings = get_settings()
+    return SANDBOX_URL if settings.NOMBA_ENV == "sandbox" else PROD_URL
 
 async def get_nomba_token() -> str:
-    now = time.time()
-    if _token_cache.get("token") and now < _token_cache.get("expires_at", 0):
-        return _token_cache["token"]
+    r = get_redis()
+    cached = r.get("nomba:token")
+    if cached:
+        return cached
 
+    settings = get_settings()
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"https://api.sandbox.nomba.com/v1/auth/token/issue",
+            f"{_base_url()}/auth/token/issue",
             json={
                 "grant_type": "client_credentials",
                 "client_id": settings.NOMBA_CLIENT_ID,
@@ -1088,9 +1131,8 @@ async def get_nomba_token() -> str:
             },
         )
     data = resp.json()["data"]
-    _token_cache["token"] = data["access_token"]
-    _token_cache["expires_at"] = now + data.get("expires_in", 3600) - 100
-    return _token_cache["token"]
+    r.setex("nomba:token", 3500, data["access_token"])
+    return data["access_token"]
 ```
 
 ### Step 2: Virtual account creation
@@ -1127,7 +1169,7 @@ In `handle_delivery()` inside `state.py`, replace the static bank placeholder wi
 
 ### Step 4: Nomba payment.success webhook handler
 
-Create `src/handlers/nomba.py` with a FastAPI POST `/nomba` route. On `payment.success`: check if payment reference already exists in MongoDB — skip if exists. Update orders.status=`paid`, payments.status=`success`. Add amount to sellers.balance_kobo. Call `send_message()` twice: buyer receipt + seller order alert. Return 200.
+Create `src/handlers/nomba.py` with a FastAPI POST `/nomba` route. On `payment.success`: check Redis key `nomba:processed:{reference}` — skip if exists. Set key with 86400s TTL. Check MongoDB payments collection as fallback. Update orders.status=`paid`, payments.status=`success`. Add amount to sellers.balance_kobo. Call `send_message()` twice: buyer receipt + seller order alert. Return 200.
 
 ```python
 # src/handlers/nomba.py
@@ -1135,10 +1177,11 @@ from fastapi import APIRouter, Request, Response
 from src.db.queries import (
     get_payment_by_reference, create_payment,
     get_order_by_id, update_order,
-    update_seller,
+    update_seller, get_seller_by_phone,
 )
 from src.services.twilio import send_message
 from src.bot.scripts import SCRIPTS
+from src.lib.redis_client import get_redis
 from bson import ObjectId
 
 router = APIRouter()
@@ -1154,43 +1197,43 @@ async def nomba_webhook(request: Request):
     data = body["data"]
     reference = data["reference"]
 
-    # Idempotency — check if already processed
-    existing = await get_payment_by_reference(reference)
-    if existing:
+    # Idempotency — Redis fast check + MongoDB fallback
+    r = get_redis()
+    idem_key = f"nomba:processed:{reference}"
+    if r.get(idem_key):
         return Response(content="", status_code=200)
 
+    existing = await get_payment_by_reference(reference)
+    if existing:
+        r.setex(idem_key, 86400, "1")
+        return Response(content="", status_code=200)
+
+    r.setex(idem_key, 86400, "1")
+
     order_id = ObjectId(data["orderId"])
-    amount_kobo = int(data["amount"])
+    amount_kobo = int(float(data["amount"]) * 100)
     customer = data.get("customer", {})
 
     order = await get_order_by_id(order_id)
     if not order:
         return Response(content="", status_code=404)
 
-    # Create payment record
     await create_payment(
         order_id, order["seller_id"],
         customer.get("phone", ""), amount_kobo, reference
     )
-
-    # Update order
     await update_order(order_id, {"status": "paid", "payment_status": "paid"})
+    await update_seller(order["seller_id"], {"$inc": {"balance_kobo": amount_kobo}})
 
-    # Update seller balance
-    await update_seller(order["seller_id"], {
-        "$inc": {"balance_kobo": amount_kobo}
-    })
+    effective_buyer = customer.get("phone", "") or order.get("buyer_phone", "")
+    if effective_buyer:
+        await send_message(effective_buyer, SCRIPTS["buyer"]["CONFIRM_received"](order["order_number"]))
 
-    # Notify buyer
-    await send_message(customer.get("phone", ""), SCRIPTS["buyer"]["CONFIRM_received"](order["order_number"]))
-
-    # Notify seller
-    from src.db.queries import get_seller_by_phone
     seller = await get_seller_by_phone(order["seller_id"])
     if seller:
         await send_message(seller["phone_number"], SCRIPTS["seller"]["new_order"](
             order["order_number"], amount_kobo // 100,
-            customer.get("phone", ""), order["delivery_address"]
+            effective_buyer, order.get("delivery_address", ""),
         ))
 
     return Response(content="", status_code=200)
@@ -1236,12 +1279,14 @@ Every day has a clear exit condition. Do not move to the next day until the exit
 | Build | Test |
 |-------|------|
 | Create MongoDB Atlas M0 cluster | Send WhatsApp to Twilio number — confirm webhook fires |
+| Create Upstash Redis instance | Confirm signature verification blocks forged requests |
 | Set all env vars in Vercel | Confirm signature verification blocks forged requests |
 | Write `main.py` — FastAPI app | |
 | Write `api/index.py` — Vercel entry point | |
 | Write `src/db/client.py` — Motor connection | |
 | Write `src/db/queries.py` — all query functions | |
 | Write `src/lib/config.py` — Pydantic Settings | |
+| Write `src/lib/redis_client.py` — Upstash connection | |
 | Write `src/handlers/twilio.py` — parse form body | |
 | Write `src/services/twilio.py` — verify signature + send | |
 | Run seed.py to populate demo seller + product | |
@@ -1294,6 +1339,7 @@ Every day has a clear exit condition. Do not move to the next day until the exit
 | Variable | Source | Value / Notes |
 |----------|--------|---------------|
 | `MONGODB_URI` | Vercel env var | `mongodb+srv://<user>:<pass>@cluster.mongodb.net/hustaq` |
+| `UPSTASH_REDIS_URL` | Vercel env var | `redis://default:xxxx@xxx.upstash.io:6379` |
 | `TWILIO_ACCOUNT_SID` | Vercel env var | Twilio console → Dashboard → Account SID |
 | `TWILIO_AUTH_TOKEN` | Vercel env var | Twilio console → Dashboard → Auth Token |
 | `TWILIO_WHATSAPP_NUMBER` | Vercel env var | `whatsapp:+234...` format — your approved sender |
@@ -1311,6 +1357,7 @@ Work through in order. Each item is a commit point.
 | # | Task | Day | Notes |
 |---|------|-----|-------|
 | ☐ | MongoDB Atlas M0 cluster created. Connection string noted. | 1 | |
+| ☐ | Upstash Redis instance created. Connection URL noted. | 1 | |
 | ☐ | Vercel project created. GitHub repo connected. | 1 | |
 | ☐ | All env vars set in Vercel. | 1 | See Section 8 |
 | ☐ | `main.py` — FastAPI app with routers | 1 | |
@@ -1356,6 +1403,7 @@ Work through in order. Each item is a commit point.
 |------|-------|
 | ☐ Vercel deployment healthy — GET `/api/health` returns 200 | |
 | ☐ MongoDB live — sellers collection has demo seller | |
+| ☐ Redis live — `get_redis().ping()` returns True | |
 | ☐ Twilio sender active — send test message from Twilio console | |
 | ☐ Nomba token resolves — `get_nomba_token()` returns a token | |
 | ☐ Demo seller has `nomba_virtual_account` populated | |
