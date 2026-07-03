@@ -94,7 +94,7 @@ async def nomba_webhook(request: Request):
     sellers = await get_sellers()
     seller = None
     for s in sellers:
-        ref = f"hustaq-seller-{s['id']}"
+        ref = f"hustaq-seller-{s['_id']}"
         if len(ref) < 16:
             ref = ref.ljust(16, "0")
         if ref == account_ref:
@@ -105,13 +105,13 @@ async def nomba_webhook(request: Request):
         return Response(content="", status_code=200)
 
     # 4. Find pending order for this seller (most recent)
-    order = await get_pending_order_for_seller(seller["id"])
+    order = await get_pending_order_for_seller(seller["_id"])
     if not order:
         return Response(content="", status_code=200)
 
     # Create payment record
     await create_payment(
-        order["_id"], seller["id"],
+        order["_id"], seller["_id"],
         order["buyer_phone"], amount_kobo, tx_id, "success"
     )
 
@@ -119,7 +119,7 @@ async def nomba_webhook(request: Request):
     await update_order(order["_id"], {"status": "paid", "payment_status": "paid", "nomba_reference": tx_id})
 
     # Update seller balance
-    await increment_seller_balance(seller["id"], amount_kobo)
+    await increment_seller_balance(seller["_id"], amount_kobo)
 
     # Notify buyer
     effective_buyer = order.get("buyer_phone", "")
