@@ -17,6 +17,15 @@ from src.lib.config import get_settings
 router = APIRouter()
 
 
+@router.get("/nomba")
+async def nomba_webhook_verify(request: Request):
+    """Handle Nomba webhook verification challenge."""
+    challenge = request.query_params.get("challenge")
+    if challenge:
+        return Response(content=challenge, status_code=200)
+    return Response(content="ok", status_code=200)
+
+
 def verify_nomba_signature(payload: dict, signature: str, secret: str, timestamp: str) -> bool:
     data = payload.get("data", {})
     merchant = data.get("merchant", {})
