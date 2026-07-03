@@ -47,8 +47,18 @@ async def whatsapp_webhook(request: Request):
     if not to_phone.startswith("+"):
         to_phone = f"+{to_phone}"
 
-    text, media_url = _extract_msg_content(msg, msg_type)
+    # ── Handle flow responses ──────────────────────────────────────────────────
+    if msg_type == "interactive":
+        interactive = msg.get("interactive", {})
+        if interactive.get("type") == "flow":
+            flow_response = interactive.get("flow_response", {})
+            screen = flow_response.get("screen", "")
+            data = flow_response.get("data", {})
+            print(f"[FLOW] From={from_phone} Screen={screen} Data={data}")
+            await _handle_flow_response(from_phone, to_phone, screen, data)
+            return Response(content="", status_code=200)
 
+    text, media_url = _extract_msg_content(msg, msg_type)
     print(f"[WEBHOOK] From={from_phone} To={to_phone} Body={text[:60]}")
 
     return await _route_message(from_phone, to_phone, text, media_url)
@@ -68,10 +78,18 @@ def _extract_msg_content(msg: dict, msg_type: str) -> tuple[str, str | None]:
     elif msg_type == "interactive":
         interactive = msg.get("interactive", {})
         if interactive.get("type") == "button_reply":
-            text = interactive.get("button_reply", {}).get("title", "")
+            text = interactive.get("button_reply", {}).get("id", "")
         elif interactive.get("type") == "list_reply":
-            text = interactive.get("list_reply", {}).get("title", "")
+            text = interactive.get("list_reply", {}).get("id", "")
     return text, media_url
+
+
+# ── Flow response handler ─────────────────────────────────────────────────────
+
+async def _handle_flow_response(from_phone: str, to_phone: str, screen: str, data: dict):
+    """Process a completed WhatsApp Flow response."""
+    from src.services.state import handle_flow_complete
+    await handle_flow_complete(from_phone, to_phone, screen, data)
 
 
 # ── Routing logic ─────────────────────────────────────────────────────────────

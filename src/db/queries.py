@@ -31,6 +31,27 @@ async def create_seller(phone_number: str, shop_name: str, shop_slug: str) -> di
 async def update_seller(seller_id, updates: dict):
     await get_db().sellers.update_one({"_id": seller_id}, {"$set": updates})
 
+
+async def get_seller_by_id(seller_id) -> dict | None:
+    return await get_db().sellers.find_one({"_id": seller_id})
+
+
+async def increment_seller_balance(seller_id, amount_kobo: int):
+    await get_db().sellers.update_one(
+        {"_id": seller_id}, {"$inc": {"balance_kobo": amount_kobo}}
+    )
+
+
+async def get_sellers() -> list[dict]:
+    return await get_db().sellers.find().to_list(length=500)
+
+
+async def get_pending_order_for_seller(seller_id) -> dict | None:
+    return await get_db().orders.find_one(
+        {"seller_id": seller_id, "status": "pending"},
+        sort=[("created_at", -1)],
+    )
+
 # --- Products ---
 async def get_products_by_seller(seller_id) -> list[dict]:
     cursor = get_db().products.find({"seller_id": seller_id, "visible": True}).sort("created_at", 1)

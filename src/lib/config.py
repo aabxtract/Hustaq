@@ -11,11 +11,16 @@ class Settings(BaseSettings):
     META_VERIFY_TOKEN: str = ""         # Random string for webhook verification
     META_WABA_ID: str = ""
     META_API_VERSION: str = "v22.0"
+    CHECKOUT_FLOW_ID: str = ""          # WhatsApp Flow ID for checkout form
+    CHECKOUT_FLOW_TOKEN: str = ""       # Static flow token for verification
 
     # ── Nomba Payments ──
     NOMBA_CLIENT_ID: str = ""
     NOMBA_CLIENT_SECRET: str = ""
+    NOMBA_ACCOUNT_ID: str = ""
+    NOMBA_SUB_ACCOUNT_ID: str = ""
     NOMBA_ENV: str = "sandbox"
+    NOMBA_WEBHOOK_SECRET: str = ""
     VERCEL_URL: str = ""
 
     class Config:

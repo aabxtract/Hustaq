@@ -1,86 +1,73 @@
 SCRIPTS = {
     "buyer": {
-        "IDLE_greeting": lambda shop_name, catalog: (
-            f"Hi! Welcome to {shop_name}. Here is what we have:\n\n{catalog}\n\n"
-            "Reply a number to order!"
+        "welcome": lambda shop_name, location: (
+            f"Hey! Welcome to *{shop_name}* \U0001F44B\n\n"
+            f"We're a{'n online' if not location else ''} shop"
+            f"{' based in ' + location if location else ''}.\n"
+            "Check out what we have below!"
         ),
-        "BROWSE_catalog": lambda items: "\n".join(
-            f"{i+1}. {p['name']} - N{p['price_kobo']//100:,}"
-            for i, p in enumerate(items)
+        "catalog_intro": lambda shop_name: f"*{shop_name}*\nPick a product:",
+        "product_detail": lambda name, price, stock: (
+            f"*{name}*\n\u20a6{price:,} | {stock} in stock"
         ),
-        "SELECT_product": lambda name, price, stock: (
-            f"{name} - N{price:,}\n{stock} in stock.\n\n"
-            "1. Buy now\n2. Ask a question\n3. Back to catalog"
+        "qty_prompt": lambda max_stock: f"How many? (1-{max_stock})",
+        "cart_summary": lambda qty, name, price, subtotal: (
+            f"\u2714 {qty}x {name} \u20a6{subtotal:,}"
         ),
-        "CART_quantity": lambda max_stock: f"How many? (Max {max_stock})",
-        "CART_summary": lambda qty, price, subtotal: (
-            f"{qty} x N{price:,} = N{subtotal:,}\nReply CONFIRM to proceed."
+        "address_prompt": lambda: "Delivery address?",
+        "payment_details": lambda shop, bank, acct, total: (
+            f"\U0001F4B3 Pay \u20a6{total:,}\n"
+            f"*{shop}*\n{bank}\n`{acct}`\n\n"
+            "Transferred? Tap below."
         ),
-        "CHECKOUT_address": lambda: (
-            "Delivery to?\n1. Type your address\n2. Send your location"
-        ),
-        "CONFIRM_payment": lambda shop_name, bank, acct, total: (
-            f"Order Summary\nTotal: N{total:,}\n\nPay to:\n{shop_name}\n"
-            f"{bank} - {acct}\n\nReply PAID when you have transferred."
-        ),
-        "CONFIRM_received": lambda order_num: (
-            f"Payment received! Order #{order_num} confirmed.\n"
-            "We will notify you when it ships."
-        ),
-        "CONFIRM_checking": lambda: "Checking your payment... one moment.",
-        "CANCEL_order": lambda: "Order cancelled. Reply MENU to start again.",
-        "INVALID_input": lambda: "Sorry, I did not get that. Reply MENU to start over.",
-        "HANDOFF_notify": lambda name: f"Connecting you to {name} now.",
-        "OUT_OF_STOCK": lambda left: f"Only {left} left. How many would you like?",
+        "paid_checking": lambda: "\u23F3 Checking payment...",
+        "paid_confirmed": lambda order_num: f"\u2705 Order *#{order_num}* confirmed!",
+        "CONFIRM_RECEIVED": lambda order_num: f"\u2705 Payment confirmed for *#{order_num}*!",
+        "cancelled": lambda: "Order cancelled.",
+        "invalid": lambda: "Try again or tap MENU.",
+        "out_of_stock": lambda left: f"Only {left} left. How many?",
+        "handoff": lambda name: f"Connecting you to *{name}*...",
+        "track_none": lambda: "No orders yet. Reply MENU to shop!",
+        "track_status": lambda num, status: f"*#{num}* — {status.upper()}",
+        "shop_empty": lambda name: f"*{name}*\nCatalog coming soon!",
     },
     "seller": {
-        "menu": lambda shop_name: (
-            f"{shop_name} - Hustaq\n\n"
-            "1. Add Product\n2. View Orders\n3. Check Balance\n4. Settings\n\n"
-            "Reply a number."
-        ),
+        "menu": lambda shop_name: f"*{shop_name}*",
         "new_order": lambda num, total, phone, addr: (
-            f"New order #{num} - N{total:,} - PAID\nBuyer: {phone}\nAddress: {addr}"
+            f"\U0001F4E6 *#{num}* \u20a6{total:,}\n{phone}\n{addr}"
         ),
         "balance": lambda avail, pending: (
-            f"Available: N{avail:,}\nPending: N{pending:,} (settles in 24h)\n\n"
-            "Reply WITHDRAW to transfer."
+            f"\U0001F4B0 \u20a6{avail:,} available\n\u23F3 \u20a6{pending:,} pending"
         ),
         "order_list": lambda orders: (
-            "No orders yet!" if not orders else
-            "\n".join(f'{i+1}. #{o["order_number"]} N{o["total_kobo"]//100:,} {o["status"].upper()}'
-                      for i, o in enumerate(orders))
+            "No orders." if not orders else
+            "\n".join(f'*#{o["order_number"]}* \u20a6{o["total_kobo"]//100:,} {o["status"]}' for o in orders)
         ),
-        "pause_confirmed": lambda: "Bot paused. Reply RESUME when done.",
-        "resume_confirmed": lambda: "Bot is back on. I will handle buyers for you.",
-        "echo_pause": lambda buyer: (
-            f"You are chatting with {buyer}. Bot paused. Reply RESUME when done."
+        "pause": lambda: "\u23F8 Bot paused. RESUME to restart.",
+        "resume": lambda: "\u25B6 Bot live!",
+        "echo_pause": lambda buyer: f"\u23F8 Chatting with *{buyer}*. RESUME when done.",
+        "onboard_welcome": lambda: (
+            "Welcome to *Hustaq*! \U0001F389\n\n"
+            "I help you sell on WhatsApp.\n"
+            "I answer your buyers, take orders, and confirm payments — so you don't have to.\n\n"
+            "Ready to set up your shop?"
         ),
-        "onboarding_welcome": lambda: (
-            "Welcome to Hustaq! I will answer buyers, take orders, and confirm payments.\n"
-            "Ready? Reply YES."
+        "onboard_shopname": lambda: "What's your shop called?\n(e.g. Amina Fabrics)",
+        "onboard_category": lambda: "What do you sell?\n\n1. Fashion\n2. Food & Drinks\n3. Beauty\n4. Gadgets\n5. Other",
+        "onboard_location": lambda: "Where are you based?\n(e.g. Yaba, Lagos)",
+        "onboard_done": lambda shop: (
+            f"\u2705 *{shop}* is now live!\n\n"
+            "Here's what I can do for you:\n"
+            "\u2022 Answer buyer questions\n"
+            "\u2022 Take orders automatically\n"
+            "\u2022 Confirm payments\n\n"
+            "Send a product photo to add your first item!"
         ),
-        "onboarding_shopname": lambda: "What is your shop name?",
-        "onboarding_category": lambda: (
-            "What do you sell?\n1. Fashion\n2. Food and Drinks\n"
-            "3. Beauty\n4. Gadgets\n5. Other"
-        ),
-        "onboarding_location": lambda: "Where are you based? (e.g. Yaba Lagos)",
-        "onboarding_done": lambda shop: (
-            f"{shop} is live! Send a photo to add your first product."
-        ),
-        "payment_ready": lambda shop, bank, acct: (
-            f"Your payment account is ready.\nBuyers pay to: {shop} - {bank} - {acct}"
-        ),
-        "product_photo_received": lambda: "Got the photo! What is the product name?",
-        "product_name_received": lambda: "What is the price in Naira? (numbers only)",
-        "product_saved": lambda name, price: (
-            f"Product added!\n{name} - N{price:,}\n\n"
-            "Send another photo to add more, or reply MENU."
-        ),
-        "invalid_price": lambda: "Please enter a valid price in Naira (numbers only, e.g. 8500)",
-        "unknown": lambda shop_name: (
-            f"I did not understand that.\n\nReply MENU to see your {shop_name} options."
-        ),
+        "product_photo": lambda: "Photo received. Product name?",
+        "product_name": lambda: "Price? (Naira, numbers only)",
+        "product_saved": lambda name, price: f"\u2705 *{name}* \u20a6{price:,} added!",
+        "invalid_price": lambda: "Enter a valid price (e.g. 8500)",
+        "unknown": lambda shop: f"Reply MENU for options.",
+        "payment_ready": lambda shop, bank, acct: f"\u2705 Pay to: *{shop}* {bank} `{acct}`",
     }
 }

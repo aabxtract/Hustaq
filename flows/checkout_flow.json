@@ -1,0 +1,66 @@
+{
+  "version": "5.0",
+  "screens": [
+    {
+      "id": "PAYMENT_SCREEN",
+      "title": "Complete Payment",
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Complete Your Order"
+          },
+          {
+            "type": "TextBody",
+            "text": "Transfer the amount below to complete your order."
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Amount to Pay"
+          },
+          {
+            "type": "TextBody",
+            "text": "{{data.amount}}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Bank"
+          },
+          {
+            "type": "TextBody",
+            "text": "{{data.bank_name}}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Account Number"
+          },
+          {
+            "type": "TextBody",
+            "text": "{{data.account_number}}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Account Name"
+          },
+          {
+            "type": "TextBody",
+            "text": "{{data.account_name}}"
+          },
+          {
+            "type": "Footer",
+            "label": "I've Transferred",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "action": "paid"
+              }
+            }
+          }
+        ]
+      },
+      "terminal": true,
+      "success": true
+    }
+  ]
+}
