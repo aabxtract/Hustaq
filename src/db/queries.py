@@ -133,13 +133,13 @@ async def update_order(order_id, updates: dict):
     await get_db().orders.update_one({"_id": order_id}, {"$set": updates})
 
 # --- Payments ---
-async def create_payment(order_id, seller_id, buyer_phone: str, amount_kobo: int, nomba_reference: str) -> dict:
+async def create_payment(order_id, seller_id, buyer_phone: str, amount_kobo: int, nomba_reference: str, status: str = "pending") -> dict:
     doc = {
         "order_id": order_id,
         "seller_id": seller_id,
         "buyer_phone": buyer_phone,
         "amount_kobo": amount_kobo,
-        "status": "pending",
+        "status": status,
         "nomba_reference": nomba_reference,
         "created_at": datetime.now(timezone.utc),
     }

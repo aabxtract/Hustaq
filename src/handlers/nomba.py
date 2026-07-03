@@ -112,11 +112,11 @@ async def nomba_webhook(request: Request):
     # Create payment record
     await create_payment(
         order["_id"], seller["id"],
-        "", amount_kobo, tx_id
+        order["buyer_phone"], amount_kobo, tx_id, "success"
     )
 
     # Update order
-    await update_order(order["_id"], {"status": "pending", "payment_status": "paid"})
+    await update_order(order["_id"], {"status": "paid", "payment_status": "paid", "nomba_reference": tx_id})
 
     # Update seller balance
     await increment_seller_balance(seller["id"], amount_kobo)
@@ -130,7 +130,7 @@ async def nomba_webhook(request: Request):
     if seller:
         await send_message(seller["phone_number"], SCRIPTS["seller"]["new_order"](
             order["order_number"], amount_kobo // 100,
-            sender_name, order.get("delivery_address", ""),
+            order["buyer_phone"], order.get("delivery_address", ""),
         ))
 
     return Response(content="", status_code=200)
