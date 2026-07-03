@@ -114,23 +114,12 @@ async def handle_flow_complete(from_phone: str, to_phone: str, screen: str, data
     conv = await _get_or_create_conv(seller_id, f"whatsapp:{to_phone}", from_phone)
 
     if screen == "PAYMENT_SCREEN":
-        # User tapped "I've Transferred" in the flow
         pending_id = conv.get("pending_order_id")
-        order = None
         if pending_id:
             from bson import ObjectId
             await update_order(ObjectId(pending_id), {"payment_status": "checking"})
-            from src.db.queries import get_order_by_id
-            order = await get_order_by_id(ObjectId(pending_id))
 
         await send_message(from_phone, SCRIPTS["buyer"]["paid_checking"]())
-
-        if order:
-            total = order.get("total_kobo", 0) // 100
-            await send_message(seller["phone_number"], SCRIPTS["seller"]["new_order"](
-                order["order_number"], total, from_phone, conv.get("delivery_address", "")
-            ))
-        await send_message(from_phone, SCRIPTS["buyer"]["paid_confirmed"](order["order_number"] if order else "?"))
 
 
 async def _get_or_create_conv(seller_id, seller_wa: str, buyer_phone: str) -> dict:
@@ -392,20 +381,10 @@ async def handle_confirm(seller, conv, intent, from_phone):
     seller_id = str(seller["_id"])
     if intent == "PAID":
         pending_id = conv.get("pending_order_id")
-        order = None
         if pending_id:
             from bson import ObjectId
             await update_order(ObjectId(pending_id), {"payment_status": "checking"})
-            from src.db.queries import get_order_by_id
-            order = await get_order_by_id(ObjectId(pending_id))
         await send_message(from_phone, SCRIPTS["buyer"]["paid_checking"]())
-
-        if order:
-            total = order.get("total_kobo", 0) // 100
-            await send_message(seller["phone_number"], SCRIPTS["seller"]["new_order"](
-                order["order_number"], total, from_phone, conv.get("delivery_address", "")
-            ))
-        await send_message(from_phone, SCRIPTS["buyer"]["paid_confirmed"](order["order_number"] if order else "?"))
 
     elif intent == "CANCEL":
         pending_id = conv.get("pending_order_id")

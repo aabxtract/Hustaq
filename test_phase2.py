@@ -64,6 +64,32 @@ def send_webhook(from_phone: str, to_phone: str, body: str):
     except Exception as ex:
         return 0, str(ex)[:200]
 
+WEBHOOK_SECRET = os.environ.get("NOMBA_WEBHOOK_SECRET", "")
+
+
+def _sign_nomba_payload(payload: dict, timestamp: str) -> str:
+    """Compute HMAC-SHA256 signature matching the server's verify_nomba_signature."""
+    import hmac, hashlib, base64
+    data = payload.get("data", {})
+    merchant = data.get("merchant", {})
+    transaction = data.get("transaction", {})
+    tx_response = transaction.get("responseCode", "")
+    if tx_response == "null":
+        tx_response = ""
+    hashing_payload = (
+        f"{payload.get('event_type', '')}:{payload.get('requestId', '')}:"
+        f"{merchant.get('userId', '')}:{merchant.get('walletId', '')}:"
+        f"{transaction.get('transactionId', '')}:{transaction.get('type', '')}:"
+        f"{transaction.get('time', '')}:{tx_response}:{timestamp}"
+    )
+    digest = hmac.new(
+        WEBHOOK_SECRET.encode("utf-8"),
+        hashing_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+
 def send_nomba_webhook(alias_account_ref: str, amount_naira: float = 170.0, tx_id: str = "NOM-TEST-P2-001"):
     payload = {
         "event_type": "payment_success",
@@ -98,10 +124,18 @@ def send_nomba_webhook(alias_account_ref: str, amount_naira: float = 170.0, tx_i
             },
         },
     }
+    timestamp = str(int(time.time()))
+    signature = _sign_nomba_payload(payload, timestamp)
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         f"{BASE_URL}/api/webhooks/nomba",
-        data=data, headers={"Content-Type": "application/json"}, method="POST",
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "nomba-signature": signature,
+            "nomba-timestamp": timestamp,
+        },
+        method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=25) as resp:
